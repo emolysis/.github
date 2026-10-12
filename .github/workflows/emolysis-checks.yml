@@ -1,0 +1,108 @@
+name: Emolysis checks
+
+# PREVIEW - NOT YET AVAILABLE.
+#
+# The emolysis CLI has not been released. Until it is, this workflow stops at
+# the "Preview guard" step with an error and installs nothing. The inputs are
+# the planned interface and may change before the first release. Interface
+# spec: docs/specs/emolysis-checks.md in emolysis/.github.
+#
+# Planned behavior: `emo check` lints the project's SQL for the target
+# platform, runs the project's golden tests on DuckDB against its committed
+# fixtures, and reports a cost estimate for the platform. It needs no
+# platform credentials and makes no changes to the repository.
+#
+# Usage, from a workflow in your repository:
+#
+#   jobs:
+#     emolysis:
+#       uses: emolysis/.github/.github/workflows/emolysis-checks.yml@main
+#       with:
+#         path: .
+#         platform: databricks
+
+on:
+  workflow_call:
+    inputs:
+      path:
+        description: Directory of the Emolysis project (the one holding emolysis.yml), relative to the repository root.
+        type: string
+        required: false
+        default: "."
+      platform:
+        description: Target platform, one of databricks, snowflake or fabric. Empty uses the platform set in emolysis.yml.
+        type: string
+        required: false
+        default: ""
+      emolysis-version:
+        description: Version of the emolysis CLI to install from PyPI, for example 0.1.0. Empty installs the latest release.
+        type: string
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+env:
+  # Set to "true" in the release that publishes the emolysis CLI.
+  EMOLYSIS_CHECKS_AVAILABLE: "false"
+
+jobs:
+  check:
+    name: emo check (preview)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Preview guard
+        if: env.EMOLYSIS_CHECKS_AVAILABLE != 'true'
+        run: |
+          echo "::error title=Emolysis checks are not available yet::The emolysis CLI has not been released. This reusable workflow is a preview of the planned interface; remove it from your workflows until it is available."
+          exit 1
+
+      - name: Validate inputs
+        env:
+          PLATFORM: ${{ inputs.platform }}
+          EMOLYSIS_VERSION: ${{ inputs.emolysis-version }}
+        run: |
+          case "$PLATFORM" in
+            "" | databricks | snowflake | fabric) ;;
+            *)
+              echo "::error::platform must be databricks, snowflake, fabric or empty, not '$PLATFORM'."
+              exit 1
+              ;;
+          esac
+          if [ -n "$EMOLYSIS_VERSION" ] && ! [[ "$EMOLYSIS_VERSION" =~ ^[0-9][0-9A-Za-z.+!-]*$ ]]; then
+            echo "::error::emolysis-version must be a version such as 0.1.0, not '$EMOLYSIS_VERSION'."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@v6
+
+      - name: Install the emolysis CLI
+        env:
+          EMOLYSIS_VERSION: ${{ inputs.emolysis-version }}
+        run: |
+          if [ -n "$EMOLYSIS_VERSION" ]; then
+            uv tool install "emolysis==$EMOLYSIS_VERSION"
+          else
+            uv tool install emolysis
+          fi
+          uv tool dir --bin >> "$GITHUB_PATH"
+
+      - name: Show the emolysis version
+        run: emo --version
+
+      - name: Run emo check
+        working-directory: ${{ inputs.path }}
+        env:
+          PLATFORM: ${{ inputs.platform }}
+        run: |
+          if [ -n "$PLATFORM" ]; then
+            emo check --platform "$PLATFORM"
+          else
+            emo check
+          fi

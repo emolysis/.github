@@ -1,0 +1,226 @@
+"""Tests for scripts/check.py: each rule fails on a bad input and passes on the repository."""
+
+from __future__ import annotations
+
+import importlib.util
+from collections.abc import Callable
+from pathlib import Path
+from types import ModuleType
+
+import pytest
+import yaml
+
+ROOT = Path(__file__).resolve().parent.parent
+
+
+def load_check() -> ModuleType:
+    spec = importlib.util.spec_from_file_location("check", ROOT / "scripts" / "check.py")
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+check = load_check()
+P = Path("x.yml")
+
+
+def doc(text: str) -> object:
+    return yaml.safe_load(text)
+
+
+# --- the repository itself ----------------------------------------------------------------
+
+
+@pytest.mark.parametrize("test", check.TESTS, ids=lambda t: t.__name__)
+def test_repository_passes(test: Callable[[], list[str]]) -> None:
+    assert test() == []
+
+
+def test_lint_passes() -> None:
+    assert check.cmd_lint() == []
+
+
+# --- CI reports as `gate` -----------------------------------------------------------------
+
+
+CI = """
+jobs:
+  gate:
+{name}    runs-on: ubuntu-latest
+"""
+
+
+@pytest.mark.parametrize("name", ["", "    name: gate\n"])
+def test_ci_gate_ok(name: str) -> None:
+    assert check.ci_gate_problems(P, doc(CI.format(name=name))) == []
+
+
+@pytest.mark.parametrize("name", ["    name: task gate\n", "    name: CI\n"])
+def test_ci_gate_renamed(name: str) -> None:
+    [problem] = check.ci_gate_problems(P, doc(CI.format(name=name)))
+    assert "reports as" in problem
+
+
+def test_ci_gate_missing_job() -> None:
+    [problem] = check.ci_gate_problems(P, doc("jobs:\n  build:\n    runs-on: ubuntu-latest\n"))
+    assert "needs a job with id 'gate'" in problem
+
+
+# --- labels that start automation stay off issue forms ------------------------------------
+
+
+CLAUDE = """
+jobs:
+  claude:
+    if: >-
+      (github.event_name == 'issues' && github.event.label.name == 'agent') ||
+      contains(github.event.comment.body, '@claude')
+    steps:
+      - uses: some/action@v1
+        with:
+          label_trigger: robot
+      - run: echo hi
+        if: github.event.label.name=='deploy'
+"""
+
+
+def test_trigger_labels() -> None:
+    assert check.trigger_labels([doc(CLAUDE), doc("jobs: {}"), None]) == {
+        "agent",
+        "robot",
+        "deploy",
+    }
+
+
+def test_repository_trigger_labels_include_agent() -> None:
+    assert "agent" in check.trigger_labels(check.workflow_docs().values())
+
+
+def test_form_with_trigger_label() -> None:
+    problems = check.form_label_problems(P, ["agent"], {"agent", "bug"}, {"agent"})
+    assert len(problems) == 1
+    assert "starts a workflow" in problems[0]
+
+
+def test_form_with_plain_and_unknown_labels() -> None:
+    assert check.form_label_problems(P, ["bug"], {"agent", "bug"}, {"agent"}) == []
+    [problem] = check.form_label_problems(P, ["nope"], {"bug"}, {"agent"})
+    assert "not defined" in problem
+
+
+def test_no_default_form_applies_agent() -> None:
+    for path in (ROOT / ".github/ISSUE_TEMPLATE").glob("*.yml"):
+        assert "agent" not in (doc(path.read_text(encoding="utf-8")) or {}).get("labels", [])
+
+
+# --- reusable workflow: preview guard -----------------------------------------------------
+
+
+GUARDED = """
+env:
+  EMOLYSIS_CHECKS_AVAILABLE: "{value}"
+jobs:
+  check:
+    steps:
+      - name: Preview guard
+        if: {condition}
+        run: |
+          echo "::error::not yet"
+          exit 1
+      - run: emo check
+"""
+GUARD_IF = "env.EMOLYSIS_CHECKS_AVAILABLE != 'true'"
+
+
+@pytest.mark.parametrize("condition", [GUARD_IF, "${{ env.EMOLYSIS_CHECKS_AVAILABLE!='true' }}"])
+def test_preview_guard_ok(condition: str) -> None:
+    text = GUARDED.format(value="false", condition=condition)
+    assert check.preview_guard_problems(P, doc(text), published=False) == []
+
+
+def test_preview_guard_switched_on_before_release() -> None:
+    text = GUARDED.format(value="true", condition=GUARD_IF)
+    [problem] = check.preview_guard_problems(P, doc(text), published=False)
+    assert 'must be "false"' in problem
+    assert check.preview_guard_problems(P, doc(text), published=True) == []
+
+
+def test_preview_guard_missing_env() -> None:
+    text = GUARDED.format(value="false", condition=GUARD_IF).replace(
+        'EMOLYSIS_CHECKS_AVAILABLE: "false"', "OTHER: x"
+    )
+    [problem] = check.preview_guard_problems(P, doc(text), published=False)
+    assert "must define" in problem
+
+
+def test_preview_guard_not_first_step() -> None:
+    text = """
+env:
+  EMOLYSIS_CHECKS_AVAILABLE: "false"
+jobs:
+  check:
+    steps:
+      - run: emo check
+"""
+    [problem] = check.preview_guard_problems(P, doc(text), published=False)
+    assert "first step must be the preview guard" in problem
+
+
+def test_preview_guard_that_does_not_fail() -> None:
+    text = GUARDED.format(value="false", condition=GUARD_IF).replace("exit 1", "exit 0")
+    [problem] = check.preview_guard_problems(P, doc(text), published=False)
+    assert "first step must be the preview guard" in problem
+
+
+def test_cli_not_published() -> None:
+    # The CLI has no release yet; flip this together with the workflow env.
+    assert check.CLI_PUBLISHED is False
+
+
+# --- reusable workflow: accepted platforms ------------------------------------------------
+
+
+VALIDATE = """
+jobs:
+  check:
+    steps:
+      - run: |
+          case "$PLATFORM" in
+            {arm}) ;;
+            *) exit 1 ;;
+          esac
+"""
+
+
+def test_platforms_match_spec() -> None:
+    text = VALIDATE.format(arm='"" | databricks | snowflake | fabric')
+    assert check.accepted_platforms(doc(text)) == {"", "databricks", "snowflake", "fabric"}
+    assert check.platform_problems(P, doc(text)) == []
+
+
+@pytest.mark.parametrize(
+    "arm",
+    [
+        '"" | databricks | snowflake | fabric | duckdb',
+        "databricks | snowflake | fabric",
+        '"" | databricks | snowflake',
+    ],
+)
+def test_platforms_drift(arm: str) -> None:
+    [problem] = check.platform_problems(P, doc(VALIDATE.format(arm=arm)))
+    assert "the spec allows" in problem
+
+
+def test_platforms_not_validated() -> None:
+    [problem] = check.platform_problems(P, doc("jobs:\n  check:\n    steps:\n      - run: x\n"))
+    assert "no step validates platform" in problem
+
+
+def test_platform_doc_row() -> None:
+    good = "| `platform` | empty | `databricks`, `snowflake` or `fabric`. |\n"
+    assert check.platform_doc_problems(P, good) == []
+    [problem] = check.platform_doc_problems(P, good.replace("`fabric`", "fabric"))
+    assert "`fabric`" in problem
+    [problem] = check.platform_doc_problems(P, "no table here\n")
+    assert "no table row" in problem

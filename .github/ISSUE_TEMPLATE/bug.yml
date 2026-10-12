@@ -1,0 +1,71 @@
+name: Bug report
+description: Something does not work as documented.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Security problems do not belong here. Report them privately as described in
+        the security policy.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you did and what went wrong. Paste exact error messages.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: The smallest set of commands, files or inputs that shows the problem.
+      placeholder: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Release, package version or commit SHA you are using.
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      description: The data platform involved, if any.
+      options:
+        - Not platform specific
+        - Local (DuckDB)
+        - Databricks
+        - Snowflake
+        - Microsoft Fabric
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: Operating system, and the client if relevant (Claude Code, Cursor, Codex, CI).
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Relevant output. It is formatted as code automatically.
+      render: shell
+  - type: checkboxes
+    id: hygiene
+    attributes:
+      label: Before you submit
+      options:
+        - label: I removed credentials, tokens, hostnames and any data I am not allowed to share.
+          required: true

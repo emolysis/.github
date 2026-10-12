@@ -1,0 +1,44 @@
+name: Agent task
+description: A specified task for Claude to implement and open as a pull request (maintainers).
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The `agent` label hands this issue to Claude in repositories that run the
+        Claude workflow; it implements the task on a branch and opens a pull request.
+        This form does not add the label: a maintainer adds `agent` after reviewing the
+        issue. Agents work from specs, not from issue threads: if no spec under
+        `docs/specs/` covers the task, write one first or label the issue `needs-spec`
+        instead.
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: One or two sentences on the outcome, not the implementation.
+    validations:
+      required: true
+  - type: input
+    id: spec
+    attributes:
+      label: Spec
+      description: Path or link to the spec in this repository that covers the task.
+      placeholder: docs/specs/<area>.md
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Checkable statements. `task gate` passing is always implied.
+      placeholder: |
+        - [ ] ...
+        - [ ] ...
+    validations:
+      required: true
+  - type: textarea
+    id: out-of-scope
+    attributes:
+      label: Out of scope
+      description: What the agent must not change or build as part of this task.
+    validations:
+      required: true

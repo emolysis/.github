@@ -1,0 +1,7 @@
+{
+  "name": "Emolysis checks (preview)",
+  "description": "Run emo check on an Emolysis pipeline project: platform lint, golden tests on DuckDB and a cost estimate. Preview: the emolysis CLI is not released yet.",
+  "iconName": "octicon checklist",
+  "categories": ["Continuous integration", "SQL", "Python"],
+  "filePatterns": ["^emolysis\\.ya?ml$"]
+}

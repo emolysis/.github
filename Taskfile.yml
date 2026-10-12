@@ -1,0 +1,52 @@
+version: "3"
+
+# Tools run through uvx and uv's script runner with pinned versions, so there
+# is no lockfile and nothing to install beyond uv and task.
+vars:
+  ACTIONLINT: uvx --from actionlint-py==1.7.12.25 --with shellcheck-py==0.11.0.1 actionlint
+  RUFF: uvx ruff@0.16.10
+  CHECK: uv run --quiet --script scripts/check.py
+  # Tests for scripts/check.py; the cache plugin is off so the gate writes nothing.
+  PYTEST: uvx --python ">=3.12" --with pyyaml==6.0.3 pytest@9.1.1 -p no:cacheprovider
+
+tasks:
+  default:
+    silent: true
+    cmds:
+      - task --list
+
+  setup:
+    desc: Fetch the pinned tools into the uv cache (idempotent)
+    cmds:
+      - uv --version
+      - "{{.ACTIONLINT}} -version"
+      - "{{.RUFF}} --version"
+      - "{{.CHECK}} --help > /dev/null"
+      - "{{.PYTEST}} --version"
+
+  fmt:
+    desc: Format in place (whitespace and final newlines everywhere, ruff for scripts/ and tests/)
+    cmds:
+      - "{{.CHECK}} fmt"
+      - "{{.RUFF}} check --fix --quiet scripts tests"
+      - "{{.RUFF}} format --quiet scripts tests"
+
+  lint:
+    desc: actionlint on all workflows and workflow templates, YAML/JSON parse, whitespace, ruff
+    cmds:
+      - "{{.ACTIONLINT}} .github/workflows/*.yml workflow-templates/*.yml"
+      - "{{.CHECK}} lint"
+      - "{{.RUFF}} format --check --quiet scripts tests"
+      - "{{.RUFF}} check --quiet scripts tests"
+
+  test:
+    desc: Structural checks on issue forms, CI, workflow templates, the reusable workflow and docs; pytest on the checks
+    cmds:
+      - "{{.CHECK}} test"
+      - "{{.PYTEST}} -q tests"
+
+  gate:
+    desc: Everything CI checks, non-mutating (lint, test)
+    cmds:
+      - task: lint
+      - task: test

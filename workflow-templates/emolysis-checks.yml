@@ -1,0 +1,31 @@
+name: Emolysis checks
+
+# PREVIEW - NOT YET AVAILABLE. The emolysis CLI has not been released, so the
+# reusable workflow this calls fails with a "not available yet" error until it
+# is. See the README of emolysis/.github.
+#
+# Runs `emo check` on every push to the default branch and every pull request:
+# platform lint, golden tests on DuckDB and a cost estimate. No credentials.
+
+on:
+  push:
+    branches: [$default-branch]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  emolysis:
+    uses: emolysis/.github/.github/workflows/emolysis-checks.yml@main
+    with:
+      # Directory holding emolysis.yml.
+      path: .
+      # databricks, snowflake or fabric. Leave unset to use emolysis.yml.
+      # platform: databricks
+      # Pin the CLI version once releases exist, for example 0.1.0.
+      # emolysis-version: ""

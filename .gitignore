@@ -1,0 +1,28 @@
+# Logs and local plans; only the devlog is tracked.
+log/*
+!log/devlog.md
+plan/
+
+# Secrets
+.env*
+!.env.example
+
+# Python tooling for scripts/
+__pycache__/
+*.py[cod]
+.venv/
+.ruff_cache/
+
+# Task
+.task/
+
+# OS and editors
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*~
+
+# pytest
+.pytest_cache/
