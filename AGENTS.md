@@ -45,6 +45,10 @@ model provider the user chooses.
   guard on, until the emolysis CLI is published with `emo check` and `emo --version`.
 - The CI job id is `gate` with no other name: it is the required status check.
 - Workflows declare least-privilege `permissions` and pin actions to a major version.
+- Architecture review: a change to the reusable workflow's inputs or to the CI `gate`
+  contract goes through the architecture review in emolysis/rules (private) before code,
+  if you have access; the pull request then says `Architecture: go (<date>)` or
+  `Architecture: pending`.
 - Every change ships with tests: extend `scripts/check.py` when you add a new kind of
   file or rule, and cover each new check in `tests/test_check.py`.
 - Public/private boundary: this repository is public. Nothing about internal
