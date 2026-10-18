@@ -2,6 +2,15 @@
 
 Newest entry first. Format: `standards/devlog.md` in emolysis/rules (private).
 
+## 2026-10-18 · profile: present tense (green)
+
+- Landed: `profile/README.md` describes Emolysis in the present tense as a product
+  (founder decision of 2026-10-18); "What it does" instead of "What we're building";
+  the Status section stays the only place that says it is not released. The same rule
+  in `AGENTS.md`.
+- Numbers: docs only; 41 tests.
+- Still open: none.
+
 ## 2026-10-18 · docs: architecture review in AGENTS.md (green)
 
 - Landed: one ground rule in `AGENTS.md`: a contract change is checked with the architect
