@@ -4,6 +4,9 @@ Newest entry first. Format: `standards/devlog.md` in emolysis/rules (private).
 
 ## 2026-10-18 · profile: present tense (green)
 
+- Landed: the present-tense lines follow the founder's Notion page word for word
+  ("Emolysis puts a team of agents at your direction from your laptop"; "Direct a team of
+  agents from your laptop").
 - Landed: `profile/README.md` describes Emolysis in the present tense as a product
   (founder decision of 2026-10-18); "What it does" instead of "What we're building";
   the Status section stays the only place that says it is not released. The same rule

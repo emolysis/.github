@@ -4,8 +4,8 @@
 
 Emolysis is the agentic lakehouse for data engineering and analytics.
 
-A team of agents you direct from your laptop: to investigate business questions, develop
-dashboards, and build and test pipelines for your data platform.
+Emolysis puts a team of agents at your direction from your laptop: to investigate business
+questions, develop dashboards, and build and test pipelines for your data platform.
 
 ### What it does
 
