@@ -7,7 +7,8 @@
 Subcommands:
   fmt   fix whitespace in place (LF line endings, no trailing whitespace, one final newline)
   lint  parse every YAML and JSON file and check whitespace (non-mutating)
-  test  structural checks: issue forms, CI, workflow templates, the reusable workflow, docs
+  test  structural checks: issue forms, CI, workflow templates, the reusable workflow, docs,
+        profile images
 
 Exits 1 and prints one line per problem when a check fails.
 """
@@ -72,6 +73,13 @@ EMAIL = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-
 REMOTE_REUSABLE = re.compile(r"^emolysis/\.github/(\.github/workflows/[^@]+)@\S+$")
 LABEL_CONDITION = re.compile(r"github\.event\.label\.name\s*==\s*'([^']+)'")
 PLATFORM_CASE = re.compile(r'case "\$PLATFORM" in\s*\n\s*([^)\n]+)\)\s*;;')
+# Profile images load from this repository's main branch, which the organization page shows.
+PROFILE_README = Path("profile/README.md")
+PROFILE_IMAGE_PREFIX = "https://github.com/emolysis/.github/raw/main/"
+PROFILE_IMAGE_MAX_BYTES = 1_000_000
+HTML_IMG = re.compile(r"<img\b[^>]*>", re.IGNORECASE)
+HTML_ATTR = re.compile(r'\b(src|alt)="([^"]*)"')
+MARKDOWN_IMG = re.compile(r"!\[([^\]]*)\]\(([^)\s]+)")
 
 Problems = list[str]
 
@@ -487,6 +495,40 @@ def check_template_calls(path: Path, inputs: set[str]) -> Problems:
     return problems
 
 
+def profile_image_problems(path: Path, text: str, size_of: Callable[[str], int | None]) -> Problems:
+    """Every image has alt text and is a file of this repository, at most 1 MB."""
+    problems: Problems = []
+    for number, line in enumerate(text.split("\n"), start=1):
+        images = [
+            (attrs.get("src", ""), attrs.get("alt", ""))
+            for attrs in (dict(HTML_ATTR.findall(tag)) for tag in HTML_IMG.findall(line))
+        ]
+        images += [(src, alt) for alt, src in MARKDOWN_IMG.findall(line)]
+        for src, alt in images:
+            if not alt.strip():
+                problems.append(f"{path}:{number}: image needs alt text")
+            if not src.startswith(PROFILE_IMAGE_PREFIX):
+                problems.append(f"{path}:{number}: image must load from {PROFILE_IMAGE_PREFIX}")
+                continue
+            size = size_of(src.removeprefix(PROFILE_IMAGE_PREFIX))
+            if size is None:
+                problems.append(f"{path}:{number}: image {src} is not in this repository")
+            elif size > PROFILE_IMAGE_MAX_BYTES:
+                problems.append(f"{path}:{number}: image is over {PROFILE_IMAGE_MAX_BYTES} bytes")
+    return problems
+
+
+def check_profile_images() -> Problems:
+    def size_of(name: str) -> int | None:
+        file = ROOT / name
+        return file.stat().st_size if file.is_file() else None
+
+    readme = ROOT / PROFILE_README
+    if not readme.is_file():
+        return []
+    return profile_image_problems(PROFILE_README, readme.read_text(encoding="utf-8"), size_of)
+
+
 def check_public_hygiene() -> Problems:
     problems: Problems = []
     for path in text_files():
@@ -507,6 +549,7 @@ TESTS: list[Callable[[], Problems]] = [
     check_ci_gate,
     check_reusable_workflow,
     check_workflow_templates,
+    check_profile_images,
     check_public_hygiene,
 ]
 

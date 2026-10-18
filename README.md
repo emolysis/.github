@@ -19,6 +19,7 @@ GitHub reads some files from this repository and applies them across the organiz
 | Path | Effect |
 |---|---|
 | `profile/README.md` | Shown on the organization page, github.com/emolysis. |
+| `profile/banner.png` | The banner on top of the profile: "An entire data team. One download." |
 | `.github/ISSUE_TEMPLATE/` | Issue forms (bug, feature, agent task) for every repository that has no `.github/ISSUE_TEMPLATE/` of its own. |
 | `.github/PULL_REQUEST_TEMPLATE.md` | Pull request template for every repository without its own. |
 | `SECURITY.md` | Security policy for every repository without its own. |
@@ -73,6 +74,7 @@ Read [AGENTS.md](AGENTS.md) before changing anything.
 
 ```text
 profile/README.md                 organization profile
+profile/banner.png                its banner
 .github/ISSUE_TEMPLATE/           default issue forms and chooser config
 .github/PULL_REQUEST_TEMPLATE.md  default pull request template
 .github/workflows/                emolysis-checks.yml (reusable) and this repo's CI

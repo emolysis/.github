@@ -2,6 +2,21 @@
 
 Newest entry first. Format: `standards/devlog.md` in emolysis/rules (private).
 
+## 2026-10-18 · profile: the new positioning and banner (green)
+
+- Landed: `profile/README.md` opens with the banner `profile/banner.png` and the approved
+  positioning: "An entire data team. One download.", the agentic lakehouse for data
+  engineering and analytics, a team of agents you direct from your laptop. Unreleased
+  features in the future tense; status unchanged ("Nothing is released yet").
+- Landed: `check_profile_images` in `scripts/check.py`: every profile image has alt text,
+  loads from this repository's main branch and is at most 1 MB. Nine new cases in
+  `tests/test_check.py`. `AGENTS.md` opens with "What we are building".
+- Numbers: 41 tests pass; banner 2000x500 PNG, 212 KB.
+- Decisions: the founder supplied the banner; it shows the organization's contact address
+  and website as part of the image. The text rule (no email addresses) still holds and
+  passes.
+- Still open: the banner renders on the organization page once this reaches `main`.
+
 ## 2026-10-12 · workflows: review fixes, CI reports as `gate`, agent form label (green)
 
 - Landed: `.github/workflows/ci.yml` job `gate` now reports as `gate` (was `task gate`), the required status check.

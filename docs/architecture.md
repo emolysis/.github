@@ -8,7 +8,7 @@ where, and what it overrides.
 
 | Part | Files | Who reads it | Scope |
 |---|---|---|---|
-| Organization profile | `profile/README.md` | GitHub, on the organization page | Organization page only |
+| Organization profile | `profile/README.md`, `profile/banner.png` | GitHub, on the organization page | Organization page only |
 | Default issue forms | `.github/ISSUE_TEMPLATE/*.yml` | GitHub, when someone opens an issue | Every repository without its own `.github/ISSUE_TEMPLATE/` |
 | Default PR template | `.github/PULL_REQUEST_TEMPLATE.md` | GitHub, when someone opens a pull request | Every repository without its own template |
 | Default community files | `SECURITY.md`, `CONTRIBUTING.md` | GitHub, on the Security tab and when opening issues and pull requests | Every repository without its own copy |

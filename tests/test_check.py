@@ -224,3 +224,37 @@ def test_platform_doc_row() -> None:
     assert "`fabric`" in problem
     [problem] = check.platform_doc_problems(P, "no table here\n")
     assert "no table row" in problem
+
+
+# --- profile images load from this repository ---------------------------------------------
+
+
+BANNER = check.PROFILE_IMAGE_PREFIX + "profile/banner.png"
+
+
+def sizes(name: str) -> int | None:
+    return {"profile/banner.png": 200_000, "profile/huge.png": 2_000_000}.get(name)
+
+
+@pytest.mark.parametrize(
+    "line",
+    [f'<img src="{BANNER}" alt="EMOLYSIS" width="100%">', f"![EMOLYSIS]({BANNER})", "no image"],
+)
+def test_profile_image_ok(line: str) -> None:
+    assert check.profile_image_problems(P, line + "\n", sizes) == []
+
+
+@pytest.mark.parametrize(
+    ("line", "message"),
+    [
+        (f'<img src="{BANNER}">', "needs alt text"),
+        (f"![ ]({BANNER})", "needs alt text"),
+        ('<img src="banner.png" alt="x">', "must load from"),
+        ('<img src="https://example.org/banner.png" alt="x">', "must load from"),
+        (f'<img src="{check.PROFILE_IMAGE_PREFIX}profile/gone.png" alt="x">', "not in this"),
+        (f'<img src="{check.PROFILE_IMAGE_PREFIX}profile/huge.png" alt="x">', "over 1000000"),
+    ],
+)
+def test_profile_image_problem(line: str, message: str) -> None:
+    [problem] = check.profile_image_problems(P, line + "\n", sizes)
+    assert message in problem

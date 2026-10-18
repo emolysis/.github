@@ -6,6 +6,19 @@ security policy and contributing guide, the starter workflows, and the reusable
 `emolysis-checks.yml` workflow that users call from their own CI. It has no product
 code. `README.md` explains which file does what.
 
+## What we are building
+**An entire data team. One download.** Emolysis is the agentic lakehouse for data
+engineering and analytics. We're building a team of agents you can direct from your
+laptop: to investigate business questions, develop dashboards, and build and test
+pipelines for your data platform. The person directs the work and reviews the results;
+production pipelines run on the user's own data platform. Nothing is released yet.
+
+The organization profile (`profile/README.md`, with `profile/banner.png` on top) says
+this to everyone who visits the organization. Keep these words when you change it. Say
+"we're building" or "will" for anything not released, and never claim that no setup is
+needed, that it works offline or that all data stays on the machine: prompts go to the
+model provider the user chooses.
+
 ## Read first
 1. This file.
 2. Shared standards: emolysis/rules (private), if you have access. Its `AGENTS.md` links
