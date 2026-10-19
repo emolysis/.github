@@ -2,6 +2,11 @@
 
 Newest entry first. Format: `standards/devlog.md` in emolysis/rules (private).
 
+## 2026-10-19 · workflows: the reusable checks take an Emolysis machine token (green)
+
+- Landed: `emolysis-checks.yml` gains the optional secret `token`, passed to `emo check` as `EMOLYSIS_TOKEN` and never printed; the starter workflow passes the caller's `EMOLYSIS_TOKEN` repository secret; spec, README and the checker (`secret_problems`, unknown secrets in a starter call) with four tests. Preview guard unchanged. Architecture: go (2026-10-19).
+- Numbers: one secret, 35 tests.
+- Still open: leaving preview when the CLI ships `emo check`; `emo token create` so a repository owner never needs a curl command.
 ## 2026-10-18 · profile: present tense (green)
 
 - Landed: the present-tense lines follow the founder's Notion page word for word

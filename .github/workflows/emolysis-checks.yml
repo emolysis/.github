@@ -20,6 +20,8 @@ name: Emolysis checks
 #       with:
 #         path: .
 #         platform: databricks
+#       secrets:
+#         token: ${{ secrets.EMOLYSIS_TOKEN }}
 
 on:
   workflow_call:
@@ -39,6 +41,10 @@ on:
         type: string
         required: false
         default: ""
+    secrets:
+      token:
+        description: An Emolysis machine token (emo_mt_...) an org owner or admin created, passed to emo check as EMOLYSIS_TOKEN. Omit it to run without an account; emo check then stops at the account gate.
+        required: false
 
 permissions:
   contents: read
@@ -100,6 +106,7 @@ jobs:
         working-directory: ${{ inputs.path }}
         env:
           PLATFORM: ${{ inputs.platform }}
+          EMOLYSIS_TOKEN: ${{ secrets.token }}
         run: |
           if [ -n "$PLATFORM" ]; then
             emo check --platform "$PLATFORM"

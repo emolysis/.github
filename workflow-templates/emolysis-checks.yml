@@ -29,3 +29,7 @@ jobs:
       # platform: databricks
       # Pin the CLI version once releases exist, for example 0.1.0.
       # emolysis-version: ""
+    secrets:
+      # A machine token (emo_mt_...) an org owner or admin created, stored as the
+      # repository secret EMOLYSIS_TOKEN. Without it, emo check stops at the account gate.
+      token: ${{ secrets.EMOLYSIS_TOKEN }}

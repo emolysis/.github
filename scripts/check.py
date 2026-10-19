@@ -39,6 +39,7 @@ CI_WORKFLOW = WORKFLOWS_DIR / "ci.yml"
 CI_GATE_JOB = "gate"
 REUSABLE_WORKFLOW = WORKFLOWS_DIR / "emolysis-checks.yml"
 REUSABLE_INPUTS = {"path", "platform", "emolysis-version"}
+REUSABLE_SECRETS = {"token"}
 REUSABLE_SPEC = Path("docs/specs/emolysis-checks.md")
 # Values the reusable workflow accepts for `platform`, besides empty. The spec owns this list.
 PLATFORMS = ("databricks", "snowflake", "fabric")
@@ -412,10 +413,34 @@ def reusable_inputs() -> dict[str, Any]:
     return inputs
 
 
+def reusable_secrets() -> dict[str, Any]:
+    doc = load_yaml(REUSABLE_WORKFLOW)
+    call = (workflow_on(doc) or {}).get("workflow_call") or {}
+    secrets: dict[str, Any] = call.get("secrets") or {}
+    return secrets
+
+
+def secret_problems(path: Path, secrets: dict[str, Any]) -> Problems:
+    """The reusable workflow's secrets: the documented set, each described and optional."""
+    problems: Problems = []
+    if set(secrets) != REUSABLE_SECRETS:
+        problems.append(
+            f"{path}: secrets are {sorted(secrets)}, expected {sorted(REUSABLE_SECRETS)}"
+        )
+    for name, spec in secrets.items():
+        if not (spec or {}).get("description"):
+            problems.append(f"{path}: secret {name!r} needs a description")
+        if (spec or {}).get("required") is not False:
+            problems.append(f"{path}: secret {name!r} must be `required: false`")
+    return problems
+
+
 def check_reusable_workflow() -> Problems:
     doc = load_yaml(REUSABLE_WORKFLOW)
     problems = preview_guard_problems(REUSABLE_WORKFLOW, doc, CLI_PUBLISHED)
     problems += platform_problems(REUSABLE_WORKFLOW, doc)
+    secrets = reusable_secrets()
+    problems += secret_problems(REUSABLE_WORKFLOW, secrets)
     inputs = reusable_inputs()
     if set(inputs) != REUSABLE_INPUTS:
         problems.append(
@@ -434,6 +459,9 @@ def check_reusable_workflow() -> Problems:
         for name in inputs:
             if f"`{name}`" not in text:
                 problems.append(f"{doc_path}: does not document input `{name}`")
+        for name in secrets:
+            if f"`{name}`" not in text:
+                problems.append(f"{doc_path}: does not document secret `{name}`")
         problems += platform_doc_problems(doc_path, text)
     return problems
 
@@ -471,11 +499,13 @@ def check_workflow_templates() -> Problems:
                 re.compile(pattern)
             except re.error as exc:
                 problems.append(f"{props_path}: bad filePatterns entry {pattern!r}: {exc}")
-        problems += check_template_calls(Path(f"workflow-templates/{name}.yml"), inputs)
+        problems += check_template_calls(
+            Path(f"workflow-templates/{name}.yml"), inputs, set(reusable_secrets())
+        )
     return problems
 
 
-def check_template_calls(path: Path, inputs: set[str]) -> Problems:
+def check_template_calls(path: Path, inputs: set[str], secrets: set[str] | None = None) -> Problems:
     problems: Problems = []
     doc = load_yaml(path)
     for job_id, job in (doc.get("jobs") or {}).items():
@@ -492,6 +522,13 @@ def check_template_calls(path: Path, inputs: set[str]) -> Problems:
             unknown = set(job.get("with") or {}) - inputs
             if unknown:
                 problems.append(f"{path}: job {job_id} passes unknown inputs {sorted(unknown)}")
+            passed = job.get("secrets")
+            if isinstance(passed, dict):
+                unknown_secrets = set(passed) - (secrets or set())
+                if unknown_secrets:
+                    problems.append(
+                        f"{path}: job {job_id} passes unknown secrets {sorted(unknown_secrets)}"
+                    )
     return problems
 
 

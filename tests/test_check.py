@@ -258,3 +258,43 @@ def test_profile_image_ok(line: str) -> None:
 def test_profile_image_problem(line: str, message: str) -> None:
     [problem] = check.profile_image_problems(P, line + "\n", sizes)
     assert message in problem
+
+
+# --- the reusable workflow's secrets -----------------------------------------------------
+
+
+def test_secrets_ok() -> None:
+    secrets = {"token": {"description": "A machine token.", "required": False}}
+    assert check.secret_problems(P, secrets) == []
+
+
+def test_secrets_drift() -> None:
+    [problem] = check.secret_problems(P, {})
+    assert "expected ['token']" in problem
+    [problem] = check.secret_problems(
+        P,
+        {
+            "token": {"description": "x", "required": False},
+            "other": {"description": "y", "required": False},
+        },
+    )
+    assert "expected ['token']" in problem
+
+
+def test_secret_needs_description_and_optional() -> None:
+    problems = check.secret_problems(P, {"token": {"required": True}})
+    assert any("needs a description" in p for p in problems)
+    assert any("required: false" in p for p in problems)
+
+
+def test_template_passes_unknown_secret(tmp_path: Path) -> None:
+    path = tmp_path / "t.yml"
+    path.write_text(
+        "on: push\njobs:\n  emolysis:\n    uses: emolysis/.github/.github/workflows/"
+        "emolysis-checks.yml@main\n    with:\n      path: .\n    secrets:\n"
+        "      token: x\n      other: y\n",
+        encoding="utf-8",
+    )
+    problems = check.check_template_calls(path, {"path"}, {"token"})
+    assert any("unknown secrets ['other']" in p for p in problems)
+    assert check.check_template_calls(path, {"path"}, {"token", "other"}) == []

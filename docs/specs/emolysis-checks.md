@@ -19,7 +19,11 @@ File: `.github/workflows/emolysis-checks.yml` in `emolysis/.github`, `on: workfl
 | `platform` | string | no | empty | One of `databricks`, `snowflake`, `fabric`, or empty to use the platform set in `emolysis.yml`. Anything else fails the run before installing. |
 | `emolysis-version` | string | no | empty | Exact version of the `emolysis` PyPI distribution, for example `0.1.0`. Must start with a digit and contain only `0-9A-Za-z.+!-`. Empty installs the latest release. |
 
-No secrets and no outputs. Permissions: `contents: read`.
+| Secret | Required | Rule |
+|---|---|---|
+| `token` | no | An Emolysis machine token (`emo_mt_...`) an org owner or admin created in the Emolysis account. The workflow passes it to `emo check` as the environment variable `EMOLYSIS_TOKEN` and never prints it. Without it `emo check` stops at the account gate with a message naming `EMOLYSIS_TOKEN`. |
+
+No outputs. Permissions: `contents: read`.
 
 Callers reference a tag or commit SHA once releases exist; `@main` until then.
 
@@ -35,7 +39,8 @@ Callers reference a tag or commit SHA once releases exist; `@main` until then.
    `emolysis==<emolysis-version>`, and put uv's tool directory on `PATH`.
 5. **Print** `emo --version`.
 6. **Run** `emo check`, adding `--platform <platform>` when `platform` is set, with
-   `path` as the working directory. The job's result is `emo check`'s exit status.
+   `path` as the working directory and `EMOLYSIS_TOKEN` set to the `token` secret (empty
+   when the caller passes none). The job's result is `emo check`'s exit status.
 
 `emo check` and `emo --version` are planned for the CLI and do not exist yet; the
 preview guard stays on until they ship. `emo check` itself (specified with the CLI, not
@@ -46,8 +51,8 @@ a data platform.
 ## Starter workflow
 
 `workflow-templates/emolysis-checks.yml` calls this workflow on pushes to
-`$default-branch` and on pull requests, cancels superseded pull request runs, and passes
-`path: .`. `workflow-templates/emolysis-checks.properties.json` names it "Emolysis
+`$default-branch` and on pull requests, cancels superseded pull request runs, passes
+`path: .` and the caller's `EMOLYSIS_TOKEN` repository secret as `token`. `workflow-templates/emolysis-checks.properties.json` names it "Emolysis
 checks (preview)" and suggests it for repositories with an `emolysis.yml` or
 `emolysis.yaml` at the root.
 
@@ -63,5 +68,6 @@ In the release that publishes the CLI with a working `emo check`:
 
 ## Out of scope
 
-Platform credentials, deploying, publishing dashboards, commenting on pull requests.
+Platform credentials (the machine token is an Emolysis account token, never a platform
+credential), deploying, publishing dashboards, commenting on pull requests.
 Those belong to other integrations.
