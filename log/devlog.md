@@ -2,6 +2,12 @@
 
 Newest entry first. Format: `standards/devlog.md` in emolysis/rules (private).
 
+## 2026-10-20 · ci: minute saving in the workflows (green)
+
+- Landed: `claude-review.yml` reviews once per pull request (`opened`, `ready_for_review`, the `review` label), never on every push, with a cancel group per pull request; `ci.yml` cancels the run a newer push supersedes on every ref and skips draft pull requests; the `review` label; the starter workflow ignores Markdown and `docs/` on push and pull request and cancels on every branch (spec updated); `scripts/check.py` refuses a review workflow that runs on push events (`review_trigger_problems`), with four tests. Founder decision of 2026-10-20 after the organization ran out of Action minutes.
+- Numbers: four workflow files, one label, one check, 50 tests.
+- Still open: a twin `ci-docs.yml` for the required check once branch protection exists.
+
 ## 2026-10-19 · workflows: the reusable checks take an Emolysis machine token (green)
 
 - Landed: `emolysis-checks.yml` gains the optional secret `token`, passed to `emo check` as `EMOLYSIS_TOKEN` and never printed; the starter workflow passes the caller's `EMOLYSIS_TOKEN` repository secret; spec, README and the checker (`secret_problems`, unknown secrets in a starter call) with four tests. Preview guard unchanged. Architecture: go (2026-10-19).

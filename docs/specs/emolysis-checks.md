@@ -51,7 +51,8 @@ a data platform.
 ## Starter workflow
 
 `workflow-templates/emolysis-checks.yml` calls this workflow on pushes to
-`$default-branch` and on pull requests, cancels superseded pull request runs, passes
+`$default-branch` and on pull requests, except when only Markdown files or `docs/` change
+(`paths-ignore`), cancels the run a newer push supersedes on every branch, passes
 `path: .` and the caller's `EMOLYSIS_TOKEN` repository secret as `token`. `workflow-templates/emolysis-checks.properties.json` names it "Emolysis
 checks (preview)" and suggests it for repositories with an `emolysis.yml` or
 `emolysis.yaml` at the root.

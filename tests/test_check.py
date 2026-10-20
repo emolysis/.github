@@ -67,6 +67,34 @@ def test_ci_gate_missing_job() -> None:
     assert "needs a job with id 'gate'" in problem
 
 
+# --- the review runs once per pull request ------------------------------------------------
+
+
+REVIEW = """
+on:
+  pull_request:
+    types: [{types}]
+"""
+
+
+def test_review_trigger_ok() -> None:
+    once = doc(REVIEW.format(types="opened, ready_for_review, labeled"))
+    assert check.review_trigger_problems(P, once) == []
+
+
+@pytest.mark.parametrize("types", ["opened, synchronize", "reopened", "opened, edited, labeled"])
+def test_review_trigger_on_every_push(types: str) -> None:
+    [problem] = check.review_trigger_problems(P, doc(REVIEW.format(types=types)))
+    assert "every push" in problem
+
+
+def test_review_trigger_default_types() -> None:
+    [problem] = check.review_trigger_problems(P, doc("on:\n  pull_request:\n"))
+    assert "explicit types" in problem
+    [problem] = check.review_trigger_problems(P, doc("on:\n  pull_request:\n    types: []\n"))
+    assert "synchronize" in problem
+
+
 # --- labels that start automation stay off issue forms ------------------------------------
 
 

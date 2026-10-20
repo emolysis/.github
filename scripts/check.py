@@ -38,6 +38,8 @@ CI_WORKFLOW = WORKFLOWS_DIR / "ci.yml"
 # GitHub reports a job's check under its name; branch protection requires `gate`.
 CI_GATE_JOB = "gate"
 REUSABLE_WORKFLOW = WORKFLOWS_DIR / "emolysis-checks.yml"
+REVIEW_WORKFLOW = WORKFLOWS_DIR / "claude-review.yml"
+REVIEW_PUSH_EVENTS = {"synchronize", "reopened", "edited"}
 REUSABLE_INPUTS = {"path", "platform", "emolysis-version"}
 REUSABLE_SECRETS = {"token"}
 REUSABLE_SPEC = Path("docs/specs/emolysis-checks.md")
@@ -321,7 +323,28 @@ def check_workflows() -> Problems:
     for path, doc in workflow_docs().items():
         if "permissions" not in doc:
             problems.append(f"{path}: set top-level permissions explicitly")
+        if path == REVIEW_WORKFLOW:
+            problems += review_trigger_problems(path, doc)
     return problems
+
+
+def review_trigger_problems(path: Path, doc: Any) -> Problems:
+    """The automated review runs once per pull request, never on every push: a review
+    spends runner minutes and API credit (emolysis/rules standards/ci.md, Minutes)."""
+    on = workflow_on(doc or {})
+    pull_request = (on or {}).get("pull_request") if isinstance(on, dict) else None
+    if not isinstance(pull_request, dict):
+        return [f"{path}: trigger on pull_request with explicit types"]
+    types = pull_request.get("types")
+    if not isinstance(types, list) or not types:
+        return [f"{path}: pull_request.types must list the events; the default has synchronize"]
+    on_push = sorted(REVIEW_PUSH_EVENTS & set(types))
+    if on_push:
+        return [
+            f"{path}: pull_request.types {on_push} run the review on every push; "
+            "use opened, ready_for_review and labeled"
+        ]
+    return []
 
 
 def ci_gate_problems(path: Path, doc: Any) -> Problems:
