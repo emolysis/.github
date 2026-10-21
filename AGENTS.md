@@ -6,6 +6,19 @@ security policy and contributing guide, the starter workflows, and the reusable
 `emolysis-checks.yml` workflow that users call from their own CI. It has no product
 code. `README.md` explains which file does what.
 
+## What we are building **An entire data team. One download.** Emolysis is the agentic
+lakehouse for data engineering and analytics. Direct a team of agents from your laptop
+to investigate business questions, develop dashboards, and build and test pipelines for
+your data platform. The person directs the work and reviews the results; production
+pipelines run on the user's own data platform. Nothing is released yet.
+
+The organization profile (`profile/README.md`, with `profile/banner.png` on top) says
+this to everyone who visits the organization. Keep these words when you change it.
+Describe what Emolysis does in the present tense; availability is a status line ("in
+private development", "not yet available"), never a future-tense promise. Never claim
+that no setup is needed, that it works offline or that all data stays on the machine:
+prompts go to the model provider the user chooses.
+
 ## Read first
 1. This file.
 2. Shared standards: emolysis/rules (private), if you have access. Its `AGENTS.md` links
@@ -32,6 +45,10 @@ code. `README.md` explains which file does what.
   guard on, until the emolysis CLI is published with `emo check` and `emo --version`.
 - The CI job id is `gate` with no other name: it is the required status check.
 - Workflows declare least-privilege `permissions` and pin actions to a major version.
+- Architecture review: a change to the reusable workflow's inputs or to the CI `gate`
+  contract goes through the architecture review in emolysis/rules (private) before code,
+  if you have access; the pull request then says `Architecture: go (<date>)` or
+  `Architecture: pending`.
 - Every change ships with tests: extend `scripts/check.py` when you add a new kind of
   file or rule, and cover each new check in `tests/test_check.py`.
 - Public/private boundary: this repository is public. Nothing about internal

@@ -4,20 +4,28 @@ name: Emolysis checks
 # reusable workflow this calls fails with a "not available yet" error until it
 # is. See the README of emolysis/.github.
 #
-# Runs `emo check` on every push to the default branch and every pull request:
-# platform lint, golden tests on DuckDB and a cost estimate. No credentials.
+# Runs `emo check` on every push to the default branch and every pull request
+# that changes something other than Markdown or docs/: platform lint, golden
+# tests on DuckDB and a cost estimate. No credentials.
 
 on:
   push:
     branches: [$default-branch]
+    paths-ignore:
+      - "**.md"
+      - docs/**
   pull_request:
+    paths-ignore:
+      - "**.md"
+      - docs/**
 
 permissions:
   contents: read
 
+# A newer push cancels the run it supersedes, on the default branch too.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: true
 
 jobs:
   emolysis:
@@ -29,3 +37,7 @@ jobs:
       # platform: databricks
       # Pin the CLI version once releases exist, for example 0.1.0.
       # emolysis-version: ""
+    secrets:
+      # A machine token (emo_mt_...) an org owner or admin created, stored as the
+      # repository secret EMOLYSIS_TOKEN. Without it, emo check stops at the account gate.
+      token: ${{ secrets.EMOLYSIS_TOKEN }}

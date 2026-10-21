@@ -19,6 +19,7 @@ GitHub reads some files from this repository and applies them across the organiz
 | Path | Effect |
 |---|---|
 | `profile/README.md` | Shown on the organization page, github.com/emolysis. |
+| `profile/banner.png` | The banner on top of the profile: "An entire data team. One download." |
 | `.github/ISSUE_TEMPLATE/` | Issue forms (bug, feature, agent task) for every repository that has no `.github/ISSUE_TEMPLATE/` of its own. |
 | `.github/PULL_REQUEST_TEMPLATE.md` | Pull request template for every repository without its own. |
 | `SECURITY.md` | Security policy for every repository without its own. |
@@ -43,6 +44,8 @@ jobs:
     with:
       path: .
       platform: databricks
+    secrets:
+      token: ${{ secrets.EMOLYSIS_TOKEN }}
 ```
 
 | Input | Default | Meaning |
@@ -50,6 +53,10 @@ jobs:
 | `path` | `.` | Directory of the Emolysis project (the one holding `emolysis.yml`). |
 | `platform` | empty | `databricks`, `snowflake` or `fabric`. Empty uses the platform in `emolysis.yml`. |
 | `emolysis-version` | empty | emolysis CLI version to install from PyPI. Empty installs the latest release. |
+
+| Secret | Meaning |
+|---|---|
+| `token` | An Emolysis machine token (`emo_mt_...`) an org owner or admin created, stored as a repository secret and passed to `emo check` as `EMOLYSIS_TOKEN`. Without it `emo check` stops at the account gate. |
 
 The workflow needs only `contents: read` and no platform credentials. Once releases are
 tagged, pin a tag or commit SHA instead of `@main`. The same workflow is offered as the
@@ -73,6 +80,7 @@ Read [AGENTS.md](AGENTS.md) before changing anything.
 
 ```text
 profile/README.md                 organization profile
+profile/banner.png                its banner
 .github/ISSUE_TEMPLATE/           default issue forms and chooser config
 .github/PULL_REQUEST_TEMPLATE.md  default pull request template
 .github/workflows/                emolysis-checks.yml (reusable) and this repo's CI

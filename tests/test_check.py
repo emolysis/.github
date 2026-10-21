@@ -67,6 +67,34 @@ def test_ci_gate_missing_job() -> None:
     assert "needs a job with id 'gate'" in problem
 
 
+# --- the review runs once per pull request ------------------------------------------------
+
+
+REVIEW = """
+on:
+  pull_request:
+    types: [{types}]
+"""
+
+
+def test_review_trigger_ok() -> None:
+    once = doc(REVIEW.format(types="opened, ready_for_review, labeled"))
+    assert check.review_trigger_problems(P, once) == []
+
+
+@pytest.mark.parametrize("types", ["opened, synchronize", "reopened", "opened, edited, labeled"])
+def test_review_trigger_on_every_push(types: str) -> None:
+    [problem] = check.review_trigger_problems(P, doc(REVIEW.format(types=types)))
+    assert "every push" in problem
+
+
+def test_review_trigger_default_types() -> None:
+    [problem] = check.review_trigger_problems(P, doc("on:\n  pull_request:\n"))
+    assert "explicit types" in problem
+    [problem] = check.review_trigger_problems(P, doc("on:\n  pull_request:\n    types: []\n"))
+    assert "synchronize" in problem
+
+
 # --- labels that start automation stay off issue forms ------------------------------------
 
 
@@ -224,3 +252,77 @@ def test_platform_doc_row() -> None:
     assert "`fabric`" in problem
     [problem] = check.platform_doc_problems(P, "no table here\n")
     assert "no table row" in problem
+
+
+# --- profile images load from this repository ---------------------------------------------
+
+
+BANNER = check.PROFILE_IMAGE_PREFIX + "profile/banner.png"
+
+
+def sizes(name: str) -> int | None:
+    return {"profile/banner.png": 200_000, "profile/huge.png": 2_000_000}.get(name)
+
+
+@pytest.mark.parametrize(
+    "line",
+    [f'<img src="{BANNER}" alt="EMOLYSIS" width="100%">', f"![EMOLYSIS]({BANNER})", "no image"],
+)
+def test_profile_image_ok(line: str) -> None:
+    assert check.profile_image_problems(P, line + "\n", sizes) == []
+
+
+@pytest.mark.parametrize(
+    ("line", "message"),
+    [
+        (f'<img src="{BANNER}">', "needs alt text"),
+        (f"![ ]({BANNER})", "needs alt text"),
+        ('<img src="banner.png" alt="x">', "must load from"),
+        ('<img src="https://example.org/banner.png" alt="x">', "must load from"),
+        (f'<img src="{check.PROFILE_IMAGE_PREFIX}profile/gone.png" alt="x">', "not in this"),
+        (f'<img src="{check.PROFILE_IMAGE_PREFIX}profile/huge.png" alt="x">', "over 1000000"),
+    ],
+)
+def test_profile_image_problem(line: str, message: str) -> None:
+    [problem] = check.profile_image_problems(P, line + "\n", sizes)
+    assert message in problem
+
+
+# --- the reusable workflow's secrets -----------------------------------------------------
+
+
+def test_secrets_ok() -> None:
+    secrets = {"token": {"description": "A machine token.", "required": False}}
+    assert check.secret_problems(P, secrets) == []
+
+
+def test_secrets_drift() -> None:
+    [problem] = check.secret_problems(P, {})
+    assert "expected ['token']" in problem
+    [problem] = check.secret_problems(
+        P,
+        {
+            "token": {"description": "x", "required": False},
+            "other": {"description": "y", "required": False},
+        },
+    )
+    assert "expected ['token']" in problem
+
+
+def test_secret_needs_description_and_optional() -> None:
+    problems = check.secret_problems(P, {"token": {"required": True}})
+    assert any("needs a description" in p for p in problems)
+    assert any("required: false" in p for p in problems)
+
+
+def test_template_passes_unknown_secret(tmp_path: Path) -> None:
+    path = tmp_path / "t.yml"
+    path.write_text(
+        "on: push\njobs:\n  emolysis:\n    uses: emolysis/.github/.github/workflows/"
+        "emolysis-checks.yml@main\n    with:\n      path: .\n    secrets:\n"
+        "      token: x\n      other: y\n",
+        encoding="utf-8",
+    )
+    problems = check.check_template_calls(path, {"path"}, {"token"})
+    assert any("unknown secrets ['other']" in p for p in problems)
+    assert check.check_template_calls(path, {"path"}, {"token", "other"}) == []

@@ -2,6 +2,52 @@
 
 Newest entry first. Format: `standards/devlog.md` in emolysis/rules (private).
 
+## 2026-10-20 · ci: minute saving in the workflows (green)
+
+- Landed: `claude-review.yml` reviews once per pull request (`opened`, `ready_for_review`, the `review` label), never on every push, with a cancel group per pull request; `ci.yml` cancels the run a newer push supersedes on every ref and skips draft pull requests; the `review` label; the starter workflow ignores Markdown and `docs/` on push and pull request and cancels on every branch (spec updated); `scripts/check.py` refuses a review workflow that runs on push events (`review_trigger_problems`), with four tests. Founder decision of 2026-10-20 after the organization ran out of Action minutes.
+- Numbers: four workflow files, one label, one check, 50 tests.
+- Still open: a twin `ci-docs.yml` for the required check once branch protection exists.
+
+## 2026-10-19 · workflows: the reusable checks take an Emolysis machine token (green)
+
+- Landed: `emolysis-checks.yml` gains the optional secret `token`, passed to `emo check` as `EMOLYSIS_TOKEN` and never printed; the starter workflow passes the caller's `EMOLYSIS_TOKEN` repository secret; spec, README and the checker (`secret_problems`, unknown secrets in a starter call) with four tests. Preview guard unchanged. Architecture: go (2026-10-19).
+- Numbers: one secret, 35 tests.
+- Still open: leaving preview when the CLI ships `emo check`; `emo token create` so a repository owner never needs a curl command.
+## 2026-10-18 · profile: present tense (green)
+
+- Landed: the present-tense lines follow the founder's Notion page word for word
+  ("Emolysis puts a team of agents at your direction from your laptop"; "Direct a team of
+  agents from your laptop").
+- Landed: `profile/README.md` describes Emolysis in the present tense as a product
+  (founder decision of 2026-10-18); "What it does" instead of "What we're building";
+  the Status section stays the only place that says it is not released. The same rule
+  in `AGENTS.md`.
+- Numbers: docs only; 41 tests.
+- Still open: none.
+
+## 2026-10-18 · docs: architecture review in AGENTS.md (green)
+
+- Landed: one ground rule in `AGENTS.md`: a contract change is checked with the architect
+  session before code; milestones and deviations are reported to it (emolysis/rules
+  `standards/architecture-review.md`).
+- Numbers: docs only.
+- Still open: none.
+
+## 2026-10-18 · profile: the new positioning and banner (green)
+
+- Landed: `profile/README.md` opens with the banner `profile/banner.png` and the approved
+  positioning: "An entire data team. One download.", the agentic lakehouse for data
+  engineering and analytics, a team of agents you direct from your laptop. Unreleased
+  features in the future tense; status unchanged ("Nothing is released yet").
+- Landed: `check_profile_images` in `scripts/check.py`: every profile image has alt text,
+  loads from this repository's main branch and is at most 1 MB. Nine new cases in
+  `tests/test_check.py`. `AGENTS.md` opens with "What we are building".
+- Numbers: 41 tests pass; banner 2000x500 PNG, 212 KB.
+- Decisions: the founder supplied the banner; it shows the organization's contact address
+  and website as part of the image. The text rule (no email addresses) still holds and
+  passes.
+- Still open: the banner renders on the organization page once this reaches `main`.
+
 ## 2026-10-12 · workflows: review fixes, CI reports as `gate`, agent form label (green)
 
 - Landed: `.github/workflows/ci.yml` job `gate` now reports as `gate` (was `task gate`), the required status check.

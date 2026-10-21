@@ -7,7 +7,8 @@
 Subcommands:
   fmt   fix whitespace in place (LF line endings, no trailing whitespace, one final newline)
   lint  parse every YAML and JSON file and check whitespace (non-mutating)
-  test  structural checks: issue forms, CI, workflow templates, the reusable workflow, docs
+  test  structural checks: issue forms, CI, workflow templates, the reusable workflow, docs,
+        profile images
 
 Exits 1 and prints one line per problem when a check fails.
 """
@@ -37,7 +38,10 @@ CI_WORKFLOW = WORKFLOWS_DIR / "ci.yml"
 # GitHub reports a job's check under its name; branch protection requires `gate`.
 CI_GATE_JOB = "gate"
 REUSABLE_WORKFLOW = WORKFLOWS_DIR / "emolysis-checks.yml"
+REVIEW_WORKFLOW = WORKFLOWS_DIR / "claude-review.yml"
+REVIEW_PUSH_EVENTS = {"synchronize", "reopened", "edited"}
 REUSABLE_INPUTS = {"path", "platform", "emolysis-version"}
+REUSABLE_SECRETS = {"token"}
 REUSABLE_SPEC = Path("docs/specs/emolysis-checks.md")
 # Values the reusable workflow accepts for `platform`, besides empty. The spec owns this list.
 PLATFORMS = ("databricks", "snowflake", "fabric")
@@ -72,6 +76,13 @@ EMAIL = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-
 REMOTE_REUSABLE = re.compile(r"^emolysis/\.github/(\.github/workflows/[^@]+)@\S+$")
 LABEL_CONDITION = re.compile(r"github\.event\.label\.name\s*==\s*'([^']+)'")
 PLATFORM_CASE = re.compile(r'case "\$PLATFORM" in\s*\n\s*([^)\n]+)\)\s*;;')
+# Profile images load from this repository's main branch, which the organization page shows.
+PROFILE_README = Path("profile/README.md")
+PROFILE_IMAGE_PREFIX = "https://github.com/emolysis/.github/raw/main/"
+PROFILE_IMAGE_MAX_BYTES = 1_000_000
+HTML_IMG = re.compile(r"<img\b[^>]*>", re.IGNORECASE)
+HTML_ATTR = re.compile(r'\b(src|alt)="([^"]*)"')
+MARKDOWN_IMG = re.compile(r"!\[([^\]]*)\]\(([^)\s]+)")
 
 Problems = list[str]
 
@@ -312,7 +323,28 @@ def check_workflows() -> Problems:
     for path, doc in workflow_docs().items():
         if "permissions" not in doc:
             problems.append(f"{path}: set top-level permissions explicitly")
+        if path == REVIEW_WORKFLOW:
+            problems += review_trigger_problems(path, doc)
     return problems
+
+
+def review_trigger_problems(path: Path, doc: Any) -> Problems:
+    """The automated review runs once per pull request, never on every push: a review
+    spends runner minutes and API credit (emolysis/rules standards/ci.md, Minutes)."""
+    on = workflow_on(doc or {})
+    pull_request = (on or {}).get("pull_request") if isinstance(on, dict) else None
+    if not isinstance(pull_request, dict):
+        return [f"{path}: trigger on pull_request with explicit types"]
+    types = pull_request.get("types")
+    if not isinstance(types, list) or not types:
+        return [f"{path}: pull_request.types must list the events; the default has synchronize"]
+    on_push = sorted(REVIEW_PUSH_EVENTS & set(types))
+    if on_push:
+        return [
+            f"{path}: pull_request.types {on_push} run the review on every push; "
+            "use opened, ready_for_review and labeled"
+        ]
+    return []
 
 
 def ci_gate_problems(path: Path, doc: Any) -> Problems:
@@ -404,10 +436,34 @@ def reusable_inputs() -> dict[str, Any]:
     return inputs
 
 
+def reusable_secrets() -> dict[str, Any]:
+    doc = load_yaml(REUSABLE_WORKFLOW)
+    call = (workflow_on(doc) or {}).get("workflow_call") or {}
+    secrets: dict[str, Any] = call.get("secrets") or {}
+    return secrets
+
+
+def secret_problems(path: Path, secrets: dict[str, Any]) -> Problems:
+    """The reusable workflow's secrets: the documented set, each described and optional."""
+    problems: Problems = []
+    if set(secrets) != REUSABLE_SECRETS:
+        problems.append(
+            f"{path}: secrets are {sorted(secrets)}, expected {sorted(REUSABLE_SECRETS)}"
+        )
+    for name, spec in secrets.items():
+        if not (spec or {}).get("description"):
+            problems.append(f"{path}: secret {name!r} needs a description")
+        if (spec or {}).get("required") is not False:
+            problems.append(f"{path}: secret {name!r} must be `required: false`")
+    return problems
+
+
 def check_reusable_workflow() -> Problems:
     doc = load_yaml(REUSABLE_WORKFLOW)
     problems = preview_guard_problems(REUSABLE_WORKFLOW, doc, CLI_PUBLISHED)
     problems += platform_problems(REUSABLE_WORKFLOW, doc)
+    secrets = reusable_secrets()
+    problems += secret_problems(REUSABLE_WORKFLOW, secrets)
     inputs = reusable_inputs()
     if set(inputs) != REUSABLE_INPUTS:
         problems.append(
@@ -426,6 +482,9 @@ def check_reusable_workflow() -> Problems:
         for name in inputs:
             if f"`{name}`" not in text:
                 problems.append(f"{doc_path}: does not document input `{name}`")
+        for name in secrets:
+            if f"`{name}`" not in text:
+                problems.append(f"{doc_path}: does not document secret `{name}`")
         problems += platform_doc_problems(doc_path, text)
     return problems
 
@@ -463,11 +522,13 @@ def check_workflow_templates() -> Problems:
                 re.compile(pattern)
             except re.error as exc:
                 problems.append(f"{props_path}: bad filePatterns entry {pattern!r}: {exc}")
-        problems += check_template_calls(Path(f"workflow-templates/{name}.yml"), inputs)
+        problems += check_template_calls(
+            Path(f"workflow-templates/{name}.yml"), inputs, set(reusable_secrets())
+        )
     return problems
 
 
-def check_template_calls(path: Path, inputs: set[str]) -> Problems:
+def check_template_calls(path: Path, inputs: set[str], secrets: set[str] | None = None) -> Problems:
     problems: Problems = []
     doc = load_yaml(path)
     for job_id, job in (doc.get("jobs") or {}).items():
@@ -484,7 +545,48 @@ def check_template_calls(path: Path, inputs: set[str]) -> Problems:
             unknown = set(job.get("with") or {}) - inputs
             if unknown:
                 problems.append(f"{path}: job {job_id} passes unknown inputs {sorted(unknown)}")
+            passed = job.get("secrets")
+            if isinstance(passed, dict):
+                unknown_secrets = set(passed) - (secrets or set())
+                if unknown_secrets:
+                    problems.append(
+                        f"{path}: job {job_id} passes unknown secrets {sorted(unknown_secrets)}"
+                    )
     return problems
+
+
+def profile_image_problems(path: Path, text: str, size_of: Callable[[str], int | None]) -> Problems:
+    """Every image has alt text and is a file of this repository, at most 1 MB."""
+    problems: Problems = []
+    for number, line in enumerate(text.split("\n"), start=1):
+        images = [
+            (attrs.get("src", ""), attrs.get("alt", ""))
+            for attrs in (dict(HTML_ATTR.findall(tag)) for tag in HTML_IMG.findall(line))
+        ]
+        images += [(src, alt) for alt, src in MARKDOWN_IMG.findall(line)]
+        for src, alt in images:
+            if not alt.strip():
+                problems.append(f"{path}:{number}: image needs alt text")
+            if not src.startswith(PROFILE_IMAGE_PREFIX):
+                problems.append(f"{path}:{number}: image must load from {PROFILE_IMAGE_PREFIX}")
+                continue
+            size = size_of(src.removeprefix(PROFILE_IMAGE_PREFIX))
+            if size is None:
+                problems.append(f"{path}:{number}: image {src} is not in this repository")
+            elif size > PROFILE_IMAGE_MAX_BYTES:
+                problems.append(f"{path}:{number}: image is over {PROFILE_IMAGE_MAX_BYTES} bytes")
+    return problems
+
+
+def check_profile_images() -> Problems:
+    def size_of(name: str) -> int | None:
+        file = ROOT / name
+        return file.stat().st_size if file.is_file() else None
+
+    readme = ROOT / PROFILE_README
+    if not readme.is_file():
+        return []
+    return profile_image_problems(PROFILE_README, readme.read_text(encoding="utf-8"), size_of)
 
 
 def check_public_hygiene() -> Problems:
@@ -507,6 +609,7 @@ TESTS: list[Callable[[], Problems]] = [
     check_ci_gate,
     check_reusable_workflow,
     check_workflow_templates,
+    check_profile_images,
     check_public_hygiene,
 ]
 
