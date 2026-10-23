@@ -325,7 +325,26 @@ def check_workflows() -> Problems:
             problems.append(f"{path}: set top-level permissions explicitly")
         if path == REVIEW_WORKFLOW:
             problems += review_trigger_problems(path, doc)
+        problems += draft_trigger_problems(path, doc)
     return problems
+
+
+def draft_trigger_problems(path: Path, doc: Any) -> Problems:
+    """A workflow whose jobs skip drafts lists ready_for_review in its pull_request types:
+    the default types never fire when a draft is marked ready, so it would run nothing until
+    the next push (emolysis/rules standards/ci.md, Minutes, Drafts)."""
+    doc = doc or {}
+    jobs = doc.get("jobs") or {}
+    skips = any(
+        "github.event.pull_request.draft" in str((job or {}).get("if", "")) for job in jobs.values()
+    )
+    on = workflow_on(doc)
+    if not skips or not isinstance(on, dict) or "pull_request" not in on:
+        return []
+    types = (on.get("pull_request") or {}).get("types") or []
+    if "ready_for_review" not in types:
+        return [f"{path}: jobs skip drafts, so pull_request.types must list ready_for_review"]
+    return []
 
 
 def review_trigger_problems(path: Path, doc: Any) -> Problems:

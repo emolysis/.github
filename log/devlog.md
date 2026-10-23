@@ -2,6 +2,12 @@
 
 Newest entry first. Format: `standards/devlog.md` in emolysis/rules (private).
 
+## 2026-10-23 · ci: a draft pull request runs its checks when it is marked ready (green)
+
+- Landed: `ci.yml` lists `ready_for_review` in its `pull_request` types, so a draft runs the gate when it is marked ready instead of on its next push; `scripts/check.py` refuses a workflow whose jobs skip drafts without it (`draft_trigger_problems`), with three tests.
+- Numbers: one workflow line, one check, 53 tests.
+- Still open: none.
+
 ## 2026-10-20 · ci: minute saving in the workflows (green)
 
 - Landed: `claude-review.yml` reviews once per pull request (`opened`, `ready_for_review`, the `review` label), never on every push, with a cancel group per pull request; `ci.yml` cancels the run a newer push supersedes on every ref and skips draft pull requests; the `review` label; the starter workflow ignores Markdown and `docs/` on push and pull request and cancels on every branch (spec updated); `scripts/check.py` refuses a review workflow that runs on push events (`review_trigger_problems`), with four tests. Founder decision of 2026-10-20 after the organization ran out of Action minutes.
