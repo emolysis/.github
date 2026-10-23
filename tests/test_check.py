@@ -95,6 +95,32 @@ def test_review_trigger_default_types() -> None:
     assert "synchronize" in problem
 
 
+# --- a draft marked ready runs the jobs that skip drafts ---------------------------------
+
+
+DRAFT_JOB = """
+jobs:
+  gate:
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+"""
+READY = "on:\n  pull_request:\n    types: [opened, synchronize, reopened, ready_for_review]\n"
+
+
+def test_draft_trigger_ok() -> None:
+    assert check.draft_trigger_problems(P, doc(READY + DRAFT_JOB)) == []
+
+
+def test_draft_trigger_default_types() -> None:
+    [problem] = check.draft_trigger_problems(P, doc("on:\n  pull_request:\n" + DRAFT_JOB))
+    assert "ready_for_review" in problem
+
+
+def test_draft_trigger_ignores_workflows_without_a_draft_guard() -> None:
+    plain = doc("on:\n  pull_request:\njobs:\n  gate:\n    runs-on: ubuntu-latest\n")
+    assert check.draft_trigger_problems(P, plain) == []
+
+
 # --- labels that start automation stay off issue forms ------------------------------------
 
 
