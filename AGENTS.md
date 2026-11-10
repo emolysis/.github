@@ -10,12 +10,12 @@ code. `README.md` explains which file does what.
 lakehouse for data engineering and analytics. Direct a team of agents from your laptop
 to investigate business questions, develop dashboards, and build and test pipelines for
 your data platform. The person directs the work and reviews the results; production
-pipelines run on the user's own data platform. Nothing is released yet.
+pipelines run on the user's own data platform. It is in public beta for macOS.
 
 The organization profile (`profile/README.md`, with `profile/banner.png` on top) says
 this to everyone who visits the organization. Keep these words when you change it.
-Describe what Emolysis does in the present tense; availability is a status line ("in
-private development", "not yet available"), never a future-tense promise. Never claim
+Describe what Emolysis does in the present tense; availability is a status line ("public
+beta", "not yet available"), never a future-tense promise. Never claim
 that no setup is needed, that it works offline or that all data stays on the machine:
 prompts go to the model provider the user chooses.
 

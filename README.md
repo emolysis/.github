@@ -7,10 +7,10 @@ in your own CI.
 
 ## Status
 
-Fresh scaffold (2026-10-12). Emolysis itself is in private development and not released.
-The profile and community files are ready to use. The reusable `emo check` workflow is a
-**preview**: the emolysis CLI it installs is not published yet, so the workflow fails
-with a "not available yet" error until it is. See [ROADMAP.md](ROADMAP.md).
+Fresh scaffold (2026-10-12). Emolysis itself is in public beta for macOS. The profile and
+community files are ready to use. The reusable `emo check` workflow is a **preview**: the
+emolysis CLI it installs is not published yet, so the workflow fails with a "not available
+yet" error until it is. See [ROADMAP.md](ROADMAP.md).
 
 ## How organization defaults work
 
