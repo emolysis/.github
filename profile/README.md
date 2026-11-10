@@ -31,9 +31,10 @@ results.
 
 ### Status
 
-In private development. Nothing is released yet: there is no installable build, CLI
-or package. Early access is by invitation. The public repositories below are early
-scaffolds and change often.
+Public beta for macOS, free with your own model key. Anyone can download the app from
+emolysis.com and create an account. Paid plans are not yet available. The `emo` command
+line and the MCP server ship inside the app; installing them as a package or putting
+`emo` on your PATH is not yet available. The public repositories below change often.
 
 ### Public repositories
 

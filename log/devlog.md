@@ -2,6 +2,12 @@
 
 Newest entry first. Format: `standards/devlog.md` in emolysis/rules (private).
 
+## 2026-11-10 · profile: the status line says public beta (green)
+
+- Landed: `profile/README.md`, `README.md` and `AGENTS.md` say "public beta for macOS, free with your own model key" in place of "in private development, nothing is released yet", as the founder's decision of 2026-11-08 (D31) sets the status label. The profile keeps "not yet available" for the CLI as a package, `emo` on the PATH and paid plans, and names the website without linking it (links stay on github.com/emolysis). The reusable `emo check` workflow and its starter keep their preview guard: the standalone CLI is still not published.
+- Numbers: three files, no check changed.
+- Still open: the preview guard comes off with the release that publishes `emo check` and `emo --version`.
+
 ## 2026-10-23 · ci: a draft pull request runs its checks when it is marked ready (green)
 
 - Landed: `ci.yml` lists `ready_for_review` in its `pull_request` types, so a draft runs the gate when it is marked ready instead of on its next push; `scripts/check.py` refuses a workflow whose jobs skip drafts without it (`draft_trigger_problems`), with three tests.
